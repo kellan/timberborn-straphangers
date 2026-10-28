@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <GameManaged Condition="'$(GameManaged)' == ''">$(TIMBERBORN_MANAGED)</GameManaged>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(GameManaged)/Newtonsoft.Json.dll"><Private>false</Private></Reference>
+    <Reference Include="$(GameManaged)/Timberborn.*.dll"><Private>false</Private></Reference>
+    <Reference Include="$(GameManaged)/Bindito.Core.dll"><Private>false</Private></Reference>
+    <Reference Include="$(GameManaged)/UnityEngine.CoreModule.dll"><Private>false</Private></Reference>
+    <Reference Include="$(GameManaged)/UnityEngine.UIElementsModule.dll"><Private>false</Private></Reference>
+    <Reference Include="$(GameManaged)/UnityEngine.TextRenderingModule.dll"><Private>false</Private></Reference>
+    <Reference Include="$(GameManaged)/System.Collections.Immutable.dll"><Private>false</Private></Reference>
+  </ItemGroup>
+  <Target Name="CheckGameAssemblies" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(GameManaged)/Timberborn.ModManagerScene.dll')" Text="Set TIMBERBORN_MANAGED or -p:GameManaged to your installed game's Managed directory. Game DLLs are not distributed with this source." />
+  </Target>
+</Project>

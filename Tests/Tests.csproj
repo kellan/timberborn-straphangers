@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework><OutputType>Exe</OutputType><Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GameManaged Condition="'$(GameManaged)' == ''">$(TIMBERBORN_MANAGED)</GameManaged>
+    <OutputPath Condition="'$(GameManaged)' != ''">bin/$(Configuration)-native/</OutputPath>
+    <IntermediateOutputPath Condition="'$(GameManaged)' != ''">obj/$(Configuration)-native/</IntermediateOutputPath>
+    <DefineConstants Condition="'$(GameManaged)' != ''">$(DefineConstants);TIMBERBORN_INTEGRATION</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs;PersistenceTests.cs;RecordingTests.cs;SyntheticReference.cs" />
+    <Compile Include="../Source/Counter.cs;../Source/EntranceCrossings.cs;../Source/CompletedPath.cs;../Source/ReplayRecording.cs;../Source/CounterPersistence.cs;../Source/RidershipPresentation.cs" />
+    <None Include="../Replay/audit_recording.py" Link="Replay/audit_recording.py" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(GameManaged)' != ''">
+    <Compile Include="NativeSaveTests.cs;../Source/RidershipSaveStore.cs" />
+    <Reference Include="$(GameManaged)/Timberborn.WorldPersistence.dll" />
+    <Reference Include="$(GameManaged)/Timberborn.Persistence.dll" />
+    <Reference Include="$(GameManaged)/Timberborn.SerializationSystem.dll" />
+    <Reference Include="$(GameManaged)/UnityEngine.CoreModule.dll" />
+    <Reference Include="$(GameManaged)/Newtonsoft.Json.dll" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,31 @@
+STRAPHANGERS DEVELOPMENT REPLAY
+
+Development builds currently record automatically. Load a colony, let several
+trips occur, then return to the main menu or quit normally. The capture seals
+on unload/quit or when its bounded size cap is reached. Normal station counting
+continues after a recording fills. A force quit may leave an incomplete capture.
+
+Each recording folder contains its own frozen auditor and station reference.
+After the capture seals:
+  python3 audit_recording.py pack <recording-folder> <bundle.zip>
+  python3 audit_recording.py audit <recording-folder-or-zip> --output report.json
+
+The auditor uses Python's standard library, with no game or .NET dependency.
+It checks checksums, ordered records, authored doorway geometry, completed
+native movement, counter events, daily arithmetic and tube membership deltas.
+Native actor capture is bounded to 64 concurrent selected passengers. Larger
+colonies are partial coverage. Displayed tube occupancy may lag or skip pieces;
+missing occupancy is unconfirmed use, not proof that no ride occurred.
+
+A -> A excursions are retained across tube transfers and construction gaps.
+Already present tube occupants are baselines, never fabricated new entries.
+Several trips within one rendered frame cannot be precisely disambiguated.
+
+Replay end totals cover only the capture window and selected actors. The game
+panel's saved lifetime totals cover a different scope. Do not compare them as
+though they should be equal.
+
+Only three recognized recording sessions are retained, with limits of 16 MiB
+compressed / 128 MiB raw per trace, plus a final complete record and metadata.
+Exported bundles are not automatically pruned. Review entity IDs and route data
+before sharing a recording publicly. Diagnostic-off release mode is planned.

@@ -1,20 +1,24 @@
 # Straphangers
 
-Station ridership statistics for **Timberborn**: saved boarding totals and rolling daily averages, displayed in each tubeway or zipline station's building panel.
+Station ridership statistics for **Timberborn**: saved boarding/alighting totals, rolling daily averages and an hourly activity strip, displayed in each tubeway or zipline station's building panel.
 
-**Development preview.** The repository starts from the locally tested v0.1.10 prototype. There is no public binary release yet. Tubeways have been exercised on small and large colonies; ziplines still need a live validation run. See [release readiness](docs/release-readiness.md) before distributing a build.
+**Development preview.** The current development build is v0.1.11. There is no public binary release yet. Tubeways have been exercised on small and large colonies; ziplines still need a live validation run. See [release readiness](docs/release-readiness.md) before distributing a build.
 
 ## What it measures
 
-Each pedestrian crossing into a station counts as one boarding. Repeated journeys and bots count. Passing through a tube segment, zipline pylon or beam does not create another boarding. An unusual construction visit can count as a station entry without a completed ride.
+Each pedestrian crossing into a station counts as one boarding; leaving the network through a station counts as one alighting. Repeated journeys and bots count. Passing through a tube segment, zipline pylon or beam does not create another boarding. An unusual construction visit can count as a station entry without a completed ride.
 
-The panel currently shows total boardings and an average over **up to seven complete game days**. Zero-traffic days count; the first partial tracking day and the current day are excluded. New stations start their own tracking periods. The first average becomes available after a complete tracked day.
+The compact two-column table shows totals and daily averages for **both boardings and alightings**, with the daily averages emphasized. Both averages use **up to seven complete game days**. Zero-traffic days count; the first partial tracking day and the current day are excluded. New stations start their own tracking periods. The first average becomes available after a complete tracked day.
 
-Both boarding and alighting totals and daily buckets are already saved internally. Showing both directions in a compact table, and adding a native time-of-day activity display, are planned design changes; they are not implemented in this source snapshot.
+The **Activity by hour** strip uses the same native hourly bar template and current-hour marker as the agora/medical-bed Popularity indicator. Height represents combined boardings and alightings, scaled to this station's busiest hour. Hover an hour for the separate counts. It is activity, not percent capacity.
+
+The strip initially shows **Today** (explicitly partial on the first tracking day). Once a complete hourly-history day is available, it shows averages by hour over up to seven complete days. Its own averaging period is labeled. Unobserved hours on the initial day are not treated as known zeroes; their tooltips explain the gap. Existing daily averages can cover a longer period than newly introduced hourly history.
 
 ## Saved data
 
-Counts are embedded in normal saves and autosaves, not stored in a separate colony database. Loading an earlier save restores that timeline. The first load of a save without mod data starts at zero. Each active station keeps lifetime totals and up to eight daily buckets. Demolished stations are omitted from subsequent save snapshots.
+Counts are embedded in normal saves and autosaves, not stored in a separate colony database. Loading an earlier save restores that timeline. The first load of a save without mod data starts at zero. Each active station keeps lifetime totals, up to eight daily buckets and up to eight sets of 24-hour boarding/alighting bins: seven previous days plus today. That is at most **384 hourly counters per station**, independent of the number of journeys or days played. Old buckets are pruned on day changes; demolished stations are removed from memory and future save snapshots.
+
+v0.1.11 reads the earlier schema-one saves without resetting totals or daily buckets. Hourly history begins when the updated observer first sees each station; old daily totals are never distributed into invented hours. New saves use schema two. Earlier mod versions cannot read that new format; use a pre-upgrade game save when testing an older DLL.
 
 The public name is Straphangers. The legacy mod ID `Kellan.BoardingCounter.Prototype`, `BoardingCounter.dll` assembly name, and save key `Kellan.BoardingCounter.Ridership` are intentionally retained so existing prototype saves remain compatible. Install only one copy of the mod.
 

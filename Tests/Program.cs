@@ -106,6 +106,7 @@ for(int i=1;i<=1440;i++) {
 }
 Check(true,"1440 constructed long-distance paths avoid false movement resets");
 PersistenceTests.Run(Check);
+HourlyActivityTests.Run(Check);
 #if TIMBERBORN_INTEGRATION
 NativeSaveTests.Run(Check);
 #endif

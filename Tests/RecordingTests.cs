@@ -77,6 +77,14 @@ public static class RecordingTests
     check(text.Split('\n',StringSplitOptions.RemoveEmptyEntries).Select(x=>JsonDocument.Parse(x).RootElement.GetProperty("type").GetString()).Last()=="end","capacity-limited trace has a valid gzip trailer and end marker");
     var dest=Path.Combine(validation,"capacity-fixture");if(Directory.Exists(dest))Directory.Delete(dest,true);Directory.CreateDirectory(dest);foreach(string name in new[]{"manifest.json","trace.jsonl.gz","station-reference.json","audit_recording.py"})File.Copy(Path.Combine(capped.DirectoryPath,name),Path.Combine(dest,name));
    }
+   using(var longCapture=new ReplayRecording(root,new string('5',32),"0.1.11",1,new{fixture=true,mod_version="0.1.11",movement_assembly_sha256=hash},reference,auditor,json)) {
+    longCapture.Geometry(1,definitions,1,0);longCapture.RegisterActor("traveler",false,outsideA,1,0);var tracker=new EntranceTracker(outsideA,gates);long obs=0;
+    for(int day=2;day<=13;day++)longCapture.Frame(Frame("traveler",tracker,day%2==0?new[]{outsideA,insideA}:new[]{insideA,outsideA},day,ref obs));
+    longCapture.Seal("fixture-complete",13,.5);
+    var dest=Path.Combine(validation,"long-capture-fixture");if(Directory.Exists(dest))Directory.Delete(dest,true);Directory.CreateDirectory(dest);
+    foreach(string name in new[]{"manifest.json","trace.jsonl.gz","station-reference.json","audit_recording.py"})File.Copy(Path.Combine(longCapture.DirectoryPath,name),Path.Combine(dest,name));
+    check(longCapture.Status=="sealed","a replay window longer than seven days seals its complete daily history");
+   }
    using(var after=new ReplayRecording(root,new string('4',32),"0.1.7",1,metadata,reference,auditor,json)){after.Seal("fixture-complete",1,0);}
    check(!Directory.Exists(Path.Combine(root,session))&&Directory.GetDirectories(root).Length==3,"recording retention preserves only the last three owned recordings");
   } finally {Directory.Delete(root,true);}

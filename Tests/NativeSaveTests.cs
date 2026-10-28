@@ -27,6 +27,14 @@ public static class NativeSaveTests
   var separate=new RidershipSaveStore(new GameSave(),serialize).Load(102);check(separate.Stations.Count==0,"native singleton storage keeps another save isolated");
   restored.Record("station-guid","tubeway","Station café\nA",102,true,false);reloadStore.Save(save,restored,new[]{"station-guid"},102);
   check(new RidershipSaveStore(save,serialize).Load(102).Stations["station-guid"].TotalBoardings==3,"a native save after reloading continues the same station total");
+  var legacy=new GameSave();var legacyKey=new SingletonKey("Kellan.BoardingCounter.Ridership");var legacyStateKey=new PropertyKey<string>("State");
+  ((ISingletonSaver)legacy).GetSingleton(legacyKey).Set(legacyStateKey,"{\"schema\":1,\"first_day\":100,\"stations\":[{\"id\":\"old\",\"mode\":\"tubeway\",\"name\":\"Old\",\"first_day\":100,\"entries\":2,\"exits\":1,\"bot_entries\":0,\"days\":[{\"day\":101,\"entries\":1,\"exits\":1}]}]}");
+  var legacyStore=new RidershipSaveStore(legacy,serialize);var legacyCounts=legacyStore.Load(102);
+  check(legacyCounts.Stations["old"].TotalBoardings==2&&legacyCounts.Stations["old"].TotalArrivals==1&&legacyCounts.Stations["old"].HourlyFirstDay==null,"native JSON loading migrates an actual schema-one field layout without inventing hourly history");
+  legacyCounts.BeginHourlyTracking("old",102,.4);legacyCounts.Record("old","tubeway","Old",102,true,false,.5);legacyCounts.Record("old","tubeway","Old",102,false,false,.5);
+  legacyStore.Save(legacy,legacyCounts,new[]{"old"},102);
+  var upgraded=new RidershipSaveStore(legacy,serialize).Load(102);
+  check(upgraded.Stations["old"].TotalBoardings==3&&upgraded.Stations["old"].TotalArrivals==2&&upgraded.Stations["old"].HourlyDays[102].Boardings[12]==1&&upgraded.Stations["old"].HourlyDays[102].Alightings[12]==1,"the native save path preserves legacy totals and new hourly directions together");
   var corrupt=new GameSave();var key=new SingletonKey("Kellan.BoardingCounter.Ridership");var stateKey=new PropertyKey<string>("State");((ISingletonSaver)corrupt).GetSingleton(key).Set(stateKey,"{\"schema\":999}");
   var badStore=new RidershipSaveStore(corrupt,serialize);bool failed=false;try{badStore.Load(102);}catch(InvalidDataException){failed=true;}
   badStore.Save(corrupt,null,Array.Empty<string>(),102);

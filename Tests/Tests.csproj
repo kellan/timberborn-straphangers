@@ -8,8 +8,8 @@
     <DefineConstants Condition="'$(GameManaged)' != ''">$(DefineConstants);TIMBERBORN_INTEGRATION</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Program.cs;PersistenceTests.cs;RecordingTests.cs;SyntheticReference.cs" />
-    <Compile Include="../Source/Counter.cs;../Source/EntranceCrossings.cs;../Source/CompletedPath.cs;../Source/ReplayRecording.cs;../Source/CounterPersistence.cs;../Source/RidershipPresentation.cs" />
+    <Compile Include="Program.cs;PersistenceTests.cs;RecordingTests.cs;SyntheticReference.cs;HourlyActivityTests.cs" />
+    <Compile Include="../Source/Counter.cs;../Source/EntranceCrossings.cs;../Source/CompletedPath.cs;../Source/ReplayRecording.cs;../Source/CounterPersistence.cs;../Source/RidershipPresentation.cs;../Source/HourlyActivity.cs" />
     <None Include="../Replay/audit_recording.py" Link="Replay/audit_recording.py" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup Condition="'$(GameManaged)' != ''">

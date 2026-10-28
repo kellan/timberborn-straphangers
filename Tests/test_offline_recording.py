@@ -76,3 +76,6 @@ with tempfile.TemporaryDirectory() as tmp:
  r=auditmod.audit(artifacts/'capacity-fixture');assert r['audit_passed'] and r['frames']==0 and not r['transport_exercised'],r
  print('PASS: bounded capture closes as a valid prefix and declares that no transport was exercised')
  (artifacts/'OFFLINE-RECORDING-RESULT.json').write_text(json.dumps(result,indent=2)+'\n')
+
+r=auditmod.audit(artifacts/'long-capture-fixture');assert r['audit_passed'] and r['frames']==12 and r['crossings']==12,r
+print('PASS: replay daily accounting stays complete across a capture longer than the saved seven-day history window')

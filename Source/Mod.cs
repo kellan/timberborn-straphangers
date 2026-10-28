@@ -25,7 +25,7 @@ namespace BoardingCounter;
 
 public sealed class Starter : IModStarter
 {
- public const string Version="0.1.10";
+ public const string Version="0.1.11";
  public static string LogDirectory="",RecordingRoot="";
  public static string? ReferenceJson,AuditorSource;
  public static object Provenance=new{};
@@ -40,7 +40,7 @@ public sealed class Starter : IModStarter
   var gamePath=typeof(PathFollower).Assembly.Location;
   Provenance=new{mod_version=Version,mod_mvid=typeof(Starter).Assembly.ManifestModule.ModuleVersionId.ToString(),mod_sha256=File.Exists(ownPath)?ReplayRecording.HashFile(ownPath):null,game_version=Application.version,unity_version=Application.unityVersion,movement_assembly_sha256=File.Exists(gamePath)?ReplayRecording.HashFile(gamePath):null,coordinate_convention="world x,y-up,z; grid x,y,z-up",tube_assembly_sha256=ReplayRecording.HashFile(typeof(TubeSpec).Assembly.Location),tube_occupancy_source="Tube.VisitorsChanged membership sets; displayed CharacterModel.Position",metric="directed pedestrian station entrance crossings"};
   try{NativeMovementBuffer.Initialize();}catch(Exception e){Debug.LogError("[Straphangers] Native movement capture unavailable: "+e);return;}
-  Debug.Log("[Straphangers] v0.1.10 entrance crossing observer loaded; saved counts and station panel; logs: "+LogDirectory);
+  Debug.Log("[Straphangers] v0.1.11 entrance crossing observer loaded; saved counts and station panel; logs: "+LogDirectory);
  }
 }
 [Context("Game")]
@@ -64,6 +64,7 @@ public sealed class CounterService : IPostLoadableSingleton,IUpdatableSingleton,
  readonly RidershipSaveStore savedCounts;
  public bool TrackingAvailable=>counter!=null&&!failed&&Active==this;
  public int Today=>clock.DayNumber;
+ public double DayProgress=>clock.DayProgress;
  public Counter? Counts=>counter;
  readonly string sessionId=Guid.NewGuid().ToString("N");
  Counter? counter;
@@ -141,10 +142,11 @@ public sealed class CounterService : IPostLoadableSingleton,IUpdatableSingleton,
   foreach(var id in riders.Keys.Where(id=>!seen.Contains(id)).ToArray()){riders[id].Detach();riders.Remove(id);sampled.Remove(id);recording?.RemoveActor(id.ToString(),clock.DayNumber,clock.DayProgress);}
  }
  void RefreshStations() {
-  var next=new List<EntranceGate>();var definitions=new Dictionary<string,ReplayStation>();
+  var next=new List<EntranceGate>();var definitions=new Dictionary<string,ReplayStation>();var existingStations=new HashSet<string>();
   foreach(var entity in entities.Entities) {
    if(entity.Deleted)continue;
    string? mode=StationClassifier.Mode(entity);
+   if(mode!=null)existingStations.Add(entity.EntityId.ToString());
    if(mode==null||!entity.TryGetComponent<BlockObject>(out var block)||!block.IsFinished||block.PositionedEntrance==null)continue;
    // Station blueprints place the entrance cell outside and the adjacent
    // doorstep cell inside. Verified against the authored door edge in all
@@ -153,9 +155,10 @@ public sealed class CounterService : IPostLoadableSingleton,IUpdatableSingleton,
    var doorstep=CoordinateSystem.GridToWorldCentered(block.PositionedEntrance.DoorstepCoordinates);
    var name=(mode=="tubeway"?"Tubeway Station":"Zipline Station")+" @ "+block.Coordinates;
    var gate=EntranceGate.FromAnchors(entity.EntityId.ToString(),name,mode,Point(entrance),Point(doorstep));
-   counter!.Register(gate.Id,mode,name,clock.DayNumber);next.Add(gate);
+   counter!.Register(gate.Id,mode,name,clock.DayNumber);counter.BeginHourlyTracking(gate.Id,clock.DayNumber,clock.DayProgress);next.Add(gate);
    definitions.Add(gate.Id,new ReplayStation{id=gate.Id,name=gate.Name,mode=gate.Mode,template=entity.Name.Replace("(Clone)","").Trim(),placement=new[]{block.Coordinates.x,block.Coordinates.y,block.Coordinates.z},orientation=block.Orientation.ToString(),outside=ReplayRecording.Vector(Point(entrance)),inside=ReplayRecording.Vector(Point(doorstep)),center=ReplayRecording.Vector(gate.Center),inward=ReplayRecording.Vector(gate.Inward),half_width=gate.HalfWidth,height_tolerance=gate.HeightTolerance});
   }
+  counter!.RetainStations(existingStations);
   next.Sort((a,b)=>string.CompareOrdinal(a.Id,b.Id));
   bool changed=next.Count!=gates.Length||next.Where((g,i)=>i>=gates.Length||g.Id!=gates[i].Id||!g.SameGeometry(gates[i])).Any();
   if(!changed)return;
@@ -208,20 +211,20 @@ public sealed class CounterService : IPostLoadableSingleton,IUpdatableSingleton,
   public void Detach()=>walker.PathFollower.MovedAlongPath-=OnMoved;
  }
  void Record(EntranceCrossing crossing,Guid passenger,bool bot,long obs) {
-  var g=crossing.Gate;counter!.Record(g.Id,g.Mode,g.Name,clock.DayNumber,crossing.Boarding,bot);
+  var g=crossing.Gate;counter!.Record(g.Id,g.Mode,g.Name,clock.DayNumber,crossing.Boarding,bot,clock.DayProgress);
   events!.WriteLine(string.Join(",",new[]{sessionId,clock.DayNumber.ToString(),Number(clock.DayProgress),obs.ToString(),revision.ToString(),g.Mode,crossing.Boarding?"entry":"exit",Csv(g.Id),Csv(g.Name),passenger.ToString(),bot?"bot":"beaver",Number(crossing.Position.X),Number(crossing.Position.Y),Number(crossing.Position.Z),Number(crossing.From.X),Number(crossing.From.Y),Number(crossing.From.Z),Number(crossing.To.X),Number(crossing.To.Y),Number(crossing.To.Z),"entrance-plane"}));
  }
  void WriteSummary() {
   if(counter==null)return;string path=Path.Combine(Starter.LogDirectory,"summary.csv");
   using(var w=new StreamWriter(path+".tmp",false)) {
-   w.WriteLine("session_id,station_id,station_name,mode,day,entries_today,exits_today,total_entries,total_exits,total_bot_entries,average_daily_entries,completed_days_in_average,tracking_start_day");
+   w.WriteLine("session_id,station_id,station_name,mode,day,entries_today,exits_today,total_entries,total_exits,total_bot_entries,average_daily_entries,average_daily_alightings,completed_days_in_average,tracking_start_day");
    foreach(var p in counter.Stations.OrderBy(p=>p.Value.Name)) {
     var s=p.Value;s.Days.TryGetValue(clock.DayNumber,out var d);
-    w.WriteLine(string.Join(",",new[]{sessionId,Csv(p.Key),Csv(s.Name),s.Mode,clock.DayNumber.ToString(),(d?.Boardings??0).ToString(),(d?.Arrivals??0).ToString(),s.TotalBoardings.ToString(),s.TotalArrivals.ToString(),s.BotBoardings.ToString(),counter.Average(p.Key,clock.DayNumber)?.ToString("F2",CultureInfo.InvariantCulture)??"",counter.ObservedFullDays(p.Key,clock.DayNumber).ToString(),counter.FirstDay.ToString()}));
+    w.WriteLine(string.Join(",",new[]{sessionId,Csv(p.Key),Csv(s.Name),s.Mode,clock.DayNumber.ToString(),(d?.Boardings??0).ToString(),(d?.Arrivals??0).ToString(),s.TotalBoardings.ToString(),s.TotalArrivals.ToString(),s.BotBoardings.ToString(),counter.Average(p.Key,clock.DayNumber)?.ToString("F2",CultureInfo.InvariantCulture)??"",counter.AverageAlightings(p.Key,clock.DayNumber)?.ToString("F2",CultureInfo.InvariantCulture)??"",counter.ObservedFullDays(p.Key,clock.DayNumber).ToString(),s.FirstDay.ToString()}));
    }
   }
   if(File.Exists(path))File.Delete(path);File.Move(path+".tmp",path);
-  File.WriteAllText(Path.Combine(Starter.LogDirectory,"observer-status.txt"),"Version: 0.1.10\nSession: "+sessionId+"\nMetric: pedestrian station entrance crossings\nActive entrances: "+gates.Length+"\nPortal revision: "+revision+"\nExplicit baseline resets / instant edges: "+riders.Values.Sum(r=>r.Skipped)+"\nCompleted native frames: "+riders.Values.Sum(r=>r.CompletedFrames)+"\nTraversed native steps: "+riders.Values.Sum(r=>r.NativeSteps)+"\nUntraversed smoothing points excluded: "+riders.Values.Sum(r=>r.SmoothingExcluded)+"\nSampled passengers: "+string.Join(", ",sampled)+"\nStandalone recording: "+(recording?.DirectoryPath??"unavailable")+"\nRecording status: "+(recording?.Status??"unavailable")+"\nRecording reason: "+(recording?.Reason??"")+"\nRecording coverage: "+(recording?.Coverage??"unavailable")+"\nRecording actors: "+(recording?.ActorsCaptured??0)+"\nObserved tube segments: "+(tubeObserver?.Count??0)+"\nRecording tube records: "+(recording?.TubeRecordsCaptured??0)+"\nRecording native frames: "+(recording?.FramesCaptured??0)+"\nTotals are stored in this game save; rolling average uses up to seven complete tracked days.\n");
+  File.WriteAllText(Path.Combine(Starter.LogDirectory,"observer-status.txt"),"Version: 0.1.11\nSession: "+sessionId+"\nMetric: pedestrian station entrance crossings\nActive entrances: "+gates.Length+"\nPortal revision: "+revision+"\nExplicit baseline resets / instant edges: "+riders.Values.Sum(r=>r.Skipped)+"\nCompleted native frames: "+riders.Values.Sum(r=>r.CompletedFrames)+"\nTraversed native steps: "+riders.Values.Sum(r=>r.NativeSteps)+"\nUntraversed smoothing points excluded: "+riders.Values.Sum(r=>r.SmoothingExcluded)+"\nSampled passengers: "+string.Join(", ",sampled)+"\nStandalone recording: "+(recording?.DirectoryPath??"unavailable")+"\nRecording status: "+(recording?.Status??"unavailable")+"\nRecording reason: "+(recording?.Reason??"")+"\nRecording coverage: "+(recording?.Coverage??"unavailable")+"\nRecording actors: "+(recording?.ActorsCaptured??0)+"\nObserved tube segments: "+(tubeObserver?.Count??0)+"\nRecording tube records: "+(recording?.TubeRecordsCaptured??0)+"\nRecording native frames: "+(recording?.FramesCaptured??0)+"\nTotals are stored in this game save; rolling average uses up to seven complete tracked days.\n");
  }
  static Point3 Point(Vector3 p)=>new Point3(p.x,p.y,p.z);
  static string Number(double d)=>d.ToString("R",CultureInfo.InvariantCulture);

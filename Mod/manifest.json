@@ -1,9 +1,9 @@
 {
   "Name": "Straphangers",
-  "Version": "0.1.10",
+  "Version": "0.1.11",
   "Id": "Kellan.BoardingCounter.Prototype",
   "MinimumGameVersion": "1.1.2.8",
-  "Description": "Saved station boardings and rolling daily averages, with native panel styling and development replay diagnostics.",
+  "Description": "Saved station boardings and alightings, rolling daily averages, and hourly activity in the game’s native busyness style.",
   "RequiredMods": [],
   "OptionalMods": []
 }

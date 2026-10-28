@@ -95,7 +95,7 @@ public sealed class ReplayRecording : IDisposable
  public bool Wants(string actor)=>Capturing&&active.Contains(actor);
  public ReplayRecording(string root,string session,string version,int firstDay,object metadata,string referenceJson,string auditorSource,Func<object,string> serialize,Action<string>? onError=null,long rawLimit=128L*1024*1024,long compressedLimit=16L*1024*1024,int actorLimit=64,int keep=3) {
   if(!Guid.TryParseExact(session,"N",out _)||actorLimit<1||keep<1||rawLimit<1||compressedLimit<1)throw new ArgumentException("Invalid recording settings");
-  this.session=session;this.version=version;this.serialize=serialize;this.onError=onError;this.rawLimit=rawLimit;this.compressedLimit=compressedLimit;this.actorLimit=actorLimit;this.metadata=metadata;endDay=firstDay;counts=new Counter(firstDay);
+  this.session=session;this.version=version;this.serialize=serialize;this.onError=onError;this.rawLimit=rawLimit;this.compressedLimit=compressedLimit;this.actorLimit=actorLimit;this.metadata=metadata;endDay=firstDay;counts=new Counter(firstDay,boundHistory:false);
   System.IO.Directory.CreateDirectory(root);Prune(root,keep);directory=Path.Combine(root,session);
   if(System.IO.Directory.Exists(directory))throw new IOException("A recording with this session ID already exists");
   System.IO.Directory.CreateDirectory(directory);
